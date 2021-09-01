@@ -1,4 +1,4 @@
-import time,glob,os,csv,argparse
+import time,glob,os,csv,argparse,re
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -10,6 +10,7 @@ class CsvWriter:
     def __init__(self, directory):
         self.DIRECTORY_TO_WATCH = directory
         self.write_file="C:\\Users\\Karan\\Downloads\\combined.csv"
+        self.environment_variable=""
         os.chdir(self.DIRECTORY_TO_WATCH)
     
 
@@ -21,9 +22,38 @@ class CsvWriter:
         '''
         with open(self.write_file,"w", newline='') as csv_file_write:
             csv_writer = csv.writer(csv_file_write, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_writer.writerow(['Source IP','Count','Events per Second'])
+            csv_writer.writerow(['Source IP','Environment'])
         try:
             for file in glob.glob("*.csv", recursive=True):
+                with open(file,"r") as csv_file, open(self.write_file,"a", newline='') as csv_file_write:
+                    file_extension = os.path.splitext(file)
+                    self.environment_variable = re.sub("^\d+\s|\s\d+\s|\s\d+$", " ", file_extension[0])
+                    csv_reader = csv.reader(csv_file, delimiter=',')
+                    csv_writer = csv.writer(csv_file_write, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    line_count = 0
+                    for row in csv_reader:
+                        if line_count == 0:
+                            line_count += 1
+                            continue
+                        else:
+                            csv_writer.writerow([row[0],self.environment_variable])
+                            line_count += 1
+                    print(f'Processed {line_count} lines of {file} file.')
+        except:
+            print("Error in file:" + file + os.system.exc_info()[0] ) 
+
+    def append(self, file):
+        '''
+        Adds the new file's data to the combined file when called,
+        also logs the no. of lines traversed for new file.
+        :param self:
+        :param file_name: takes the file path to be read provided by event handler
+        '''
+        try:
+            file_name = os.path.split(file)
+            file_extension = os.path.splitext(file_name[1])
+            self.environment_variable=re.sub("^\d+\s|\s\d+\s|\s\d+$", " ", file_extension[0])
+            if file_extension[1] ==".csv" :
                 with open(file,"r") as csv_file, open(self.write_file,"a", newline='') as csv_file_write:
                     csv_reader = csv.reader(csv_file, delimiter=',')
                     csv_writer = csv.writer(csv_file_write, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -33,43 +63,18 @@ class CsvWriter:
                             line_count += 1
                             continue
                         else:
-                            csv_writer.writerow([row[0],row[1],row[2]])
+                            csv_writer.writerow([row[0],self.environment_variable])
                             line_count += 1
-                    print(f'Processed {line_count} lines of {file} file.')
-        except:
-            print("Error in file:" + file + os.system.exc_info()[0] ) 
-
-    def append(self, file_name):
-        '''
-        Adds the new file's data to the combined file when called,
-        also logs the no. of lines traversed for new file.
-        :param self:
-        :param file_name: takes the file path to be read provided by event handler
-        '''
-        try:
-            file_extension = os.path.splitext(file_name)
-            if file_extension[1] ==".csv" :
-                with open(file_name,"r") as csv_file, open(self.write_file,"a", newline='') as csv_file_write:
-                    csv_reader = csv.reader(csv_file, delimiter=',')
-                    csv_writer = csv.writer(csv_file_write, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    line_count = 0
-                    for row in csv_reader:
-                        if line_count == 0:
-                            line_count += 1
-                            continue
-                        else:
-                            csv_writer.writerow([row[0],row[1],row[2]])
-                            line_count += 1
-                    print(f'Processed {line_count} lines of {file_name} file.')
+                    print(f'Processed {line_count} lines of {file_extension[0]+file_extension[1]} file.')
             else:
-                print("Not a csv file skipping the data read:" + file_name)
+                print("Not a csv file skipping the data read:" + file_extension[0]+file_extension[1])
         except:
-            print("Error in file:" + file_name + os.system.exc_info()[0] )
+            print("Error in file:" + file_name[1] + os.system.exc_info()[0] )
 
 class Watcher:
     '''
     Creates an Observer and initializes the Handler class, which will monitor the
-    provided directory for changes and calls relevant methods.
+    provided direcotry for changes and calls relevant methods.
     '''
     def __init__(self, directory):
         self.DIRECTORY_TO_WATCH = directory
